@@ -45,3 +45,15 @@ Deploy to any Node-compatible Next.js host (for example Vercel): install with `n
 ## Scope
 
 V0 implements one reusable neighborhood adventure. Photo upload, AI character generation, printing, accounts, social sharing, voice, complex editing, and a saved-story library are intentionally outside this prototype.
+
+### Open on your phone with Vercel
+
+1. Visit https://vercel.com/new and sign in using the GitHub account that can access `GGGeetika/crafta`.
+2. Import `GGGeetika/crafta`. If it is missing, use **Adjust GitHub App Permissions** to grant Vercel access to this repository.
+3. Select the `main` branch. Leave the root directory at the repository root and the framework preset as **Next.js**.
+4. In project settings, select **Node.js 24.x**. Use install command `npm ci`, build command `npm run build`, and the default Next.js output directory. No environment variables are needed.
+5. Click **Deploy**. When deployment finishes, open the deployment URL shown by Vercel on your phone.
+6. If Vercel asks you to sign in on your phone, sign in with your project account. To let someone else test, configure Deployment Protection in Vercel's project settings or use the production deployment according to your access preferences.
+7. Tap **Let’s make a story!**, meet Maya, choose a location, make four decisions, and flip through the eight-page book. Refresh midway and choose **Continue our adventure** to test local progress.
+
+The build uses Next.js’s supported Webpack bundler (`next build --webpack`) because this cloud runtime restricts the ports used by Turbopack build workers. The development server still uses Next.js’s default development bundler and listens on port 3000.
