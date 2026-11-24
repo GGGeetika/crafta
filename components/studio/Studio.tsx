@@ -1,6 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { authorNames, decodeBook, newStory, type Story } from '@/lib/story/engine';
+import { MAYA_LOOK, type Hero } from '@/lib/story/hero';
+import { HeroBuilder } from './HeroBuilder';
 import { clearDraft, loadDraft, loadShelf, saveDraft, shelveBook } from '@/lib/persist';
 import { track } from '@/lib/analytics';
 import { Home } from './Home';
@@ -11,7 +13,7 @@ import { ShareSheet } from './ShareSheet';
 import { Cover, byline } from './Cover';
 import { Icon } from '../ui/marks';
 
-type Screen = 'home' | 'authors' | 'make' | 'reveal' | 'read';
+type Screen = 'home' | 'authors' | 'hero' | 'make' | 'reveal' | 'read';
 
 function Reveal({ story, onRead, onShare, onHome }: { story: Story; onRead: () => void; onShare: () => void; onHome: () => void }) {
   return (
@@ -39,6 +41,7 @@ export function Studio() {
   const [shared, setShared] = useState(false);
   const [sharing, setSharing] = useState<Story | null>(null);
   const [notice, setNotice] = useState('');
+  const [authors, setAuthors] = useState({ child: '', grownup: '' });
 
   useEffect(() => {
     track('session_started');
@@ -64,8 +67,13 @@ export function Studio() {
     setScreen('authors');
   }
 
-  function start(authors: { child: string; grownup: string }) {
-    const s = newStory(authors);
+  function named(a: { child: string; grownup: string }) {
+    setAuthors(a);
+    setScreen('hero');
+  }
+
+  function start(hero: Hero) {
+    const s = newStory(authors, Date.now(), hero);
     update(s);
     setDraft(s);
     setScreen('make');
@@ -92,12 +100,21 @@ export function Studio() {
   function read(s: Story) { setReading(s); setScreen('read'); }
 
   const lastAuthors = story ? authorNames(story) : shelf[0] ? shelf[0].authors : draft ? draft.authors : { child: '', grownup: '' };
-  const named = { child: lastAuthors.child === 'Little author' ? '' : lastAuthors.child, grownup: lastAuthors.grownup === 'Grown-up' ? '' : lastAuthors.grownup };
+  const prefill = { child: lastAuthors.child === 'Little author' ? '' : lastAuthors.child, grownup: lastAuthors.grownup === 'Grown-up' ? '' : lastAuthors.grownup };
+
+  /** Start from the hero this child made last time, so a second book feels like theirs straight away. */
+  function lastHero(child: string): Hero {
+    const name = child.trim() || 'Maya';
+    const prev = [story, draft, ...shelf].find((b) => b && b.hero && b.hero.name === name)?.hero;
+    if (prev) return prev;
+    return { name, pronoun: 'she', look: MAYA_LOOK };
+  }
 
   return (
     <>
       {screen === 'home' && <Home draft={draft} shelf={shelf} onMake={begin} onContinue={() => { if (draft) { setStory(draft); setScreen('make'); } }} onRead={read} />}
-      {screen === 'authors' && <Authors initial={named} onStart={start} onBack={home} />}
+      {screen === 'authors' && <Authors initial={prefill} onStart={named} onBack={home} />}
+      {screen === 'hero' && <HeroBuilder childName={authors.child} initial={lastHero(authors.child)} onDone={start} onBack={() => setScreen('authors')} />}
       {screen === 'make' && story && <Make story={story} onChange={update} onFinish={finish} onHome={home} />}
       {screen === 'reveal' && story && <Reveal story={story} onRead={() => read(story)} onShare={() => setSharing(story)} onHome={home} />}
       {screen === 'read' && reading && (

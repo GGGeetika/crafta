@@ -1,4 +1,5 @@
 import { PLACES, type FriendId, type ObjectId, type PlaceId } from './content.ts';
+import type { HeroLook } from './hero.ts';
 import { progress, world, upTo, PAGE_AFTER, STEPS, type StepId, type Story } from './engine.ts';
 
 /**
@@ -17,7 +18,7 @@ export type Actor = {
   key: string; kind: ActorKind; x: number; y: number; w: number; h: number; z: number;
   flip?: boolean; pose?: string; expr?: string; object?: ObjectId; look?: Look; show?: string; prop?: string; anim?: Anim; tap?: Tap;
 };
-export type Scene = { backdrop: BackdropId; place?: PlaceId; time: 'day' | 'dusk'; weather: 'clear' | 'wind' | 'rain'; actors: Actor[] };
+export type Scene = { backdrop: BackdropId; place?: PlaceId; time: 'day' | 'dusk'; weather: 'clear' | 'wind' | 'rain'; actors: Actor[]; hero?: HeroLook };
 
 const BOX: Record<string, [number, number, number, number]> = {
   maya: [160, 230, 80, 214], otis: [170, 300, 85, 292], juniper: [160, 240, 80, 232], biscuit: [150, 120, 75, 112],
@@ -77,6 +78,10 @@ function prop(id: string, x: number, y: number, w: number, h: number, z = 1, key
 export const FRIEND_KINDS: FriendId[] = ['otis', 'juniper', 'biscuit'];
 
 export function scene(story: Story, opts: { interactive?: boolean } = {}): Scene {
+  return { ...sceneRaw(story, opts), hero: story.hero?.look };
+}
+
+function sceneRaw(story: Story, opts: { interactive?: boolean }): Scene {
   const interactive = !!opts.interactive;
   const n = progress(story);
   const w = world(story);
@@ -198,7 +203,9 @@ export function scene(story: Story, opts: { interactive?: boolean } = {}): Scene
     const mayaFoot: Pt = rain ? L.shelter : [Math.min(L.maya[0] + 40, friendFoot[0] - 190), L.maya[1]];
     const maya = figure('maya', 'maya', mayaFoot, S, { pose: rain ? 'hold' : 'stand', expr: w.need ? (w.need === 'lost' ? 'worried' : 'curious') : 'happy' });
     actors.push(maya, friend);
-    actors.push(rain ? held(obj, maya, 0.9, { look }) : held(obj, friend, fid === 'biscuit' ? 0.6 : 0.85, { look }));
+    if (rain) actors.push(held(obj, maya, 0.9, { look }));
+    else if (fid === 'biscuit') { const [, oh] = OBJECT_SIZE[obj]; actors.push(thing(obj, [maya.x + maya.w + 30, L.maya[1] - oh * 0.35], 0.7, { look })); }
+    else actors.push(held(obj, friend, 0.85, { look }));
     if (w.need && w.need !== 'custom') actors.push(bubble(friend, w.need === 'lost' ? 'house' : w.need === 'lonely' ? 'friends' : obj));
     return sc;
   }
@@ -280,5 +287,5 @@ export function coverScene(story: Story): Scene {
   const actors: Actor[] = [maya, friend];
   if (obj === 'kite' || obj === 'balloon') actors.push(thing(obj, [520, 210], 1.1, { look, anim: obj === 'kite' ? 'flutter' : 'bob' }));
   else actors.push(held(obj, maya, 1.05, { look }));
-  return { backdrop: 'vignette', place, time: w.ending === 'home' ? 'dusk' : 'day', weather: 'clear', actors };
+  return { backdrop: 'vignette', place, time: w.ending === 'home' ? 'dusk' : 'day', weather: 'clear', actors, hero: story.hero?.look };
 }

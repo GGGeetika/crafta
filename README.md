@@ -2,7 +2,7 @@
 
 **A classic children’s book that you make together.** Little books. Big memories.
 
-A child and a grown-up sit side by side with one device and make a six-page picture book about Maya and her neighborhood, taking turns. The illustrated world is the interface: you tap the bakery and Maya walks there; pick “a big gust of wind” and the trees bend and the kite flies off. After every round a new page drops into the growing book. At the end the cover is revealed, then the app gets out of the way so you can read your book together.
+A child and a grown-up sit side by side with one device and make a six-page picture book, taking turns. **The child is the hero**: before page one, they draw themself into the book. The illustrated world is the interface: you tap the bakery and your hero walks there; pick “a big gust of wind” and the trees bend and the kite flies off. After every round a new page drops into the growing book. At the end the cover is revealed, then the app gets out of the way so you can read your book together.
 
 No accounts, no server-side storage, no AI image generation. Works offline once loaded.
 
@@ -26,6 +26,7 @@ npm run build && npm start
 |---|---|
 | **Home / bookshelf** | Maple Street, the tagline, *Make a book together* (or *Continue our book*), and finished books shown as covers on a shelf. |
 | **Authors** | A title page: “written by ___ and ___”. First names or nicknames only. |
+| **Who’s the hero?** | The little author builds their hero from drawn parts: 5 hairstyles, 4 hair colours, 5 skin tones, 4 coats, glasses. A grown-up picks she, he or they. The hero takes the child’s name everywhere: the story, the titles, the cover. *Use Maya instead* is the fallback, and the next book starts from the hero the child made last time. No photos. |
 | **Six rounds** | Each round is a turn for the little author (crayon), the grown-up (pen), or both together, shown with an icon, a coloured band and the author’s name, so colour is never the only cue. |
 | **Growing book** | After each round the new page flies into the “Our book” strip, and the page text appears in book type for the grown-up to read aloud. Tap any finished page to revisit it. |
 | **Cover reveal** | A cloth-bound cover with the title, both names, and an illustration built from the story’s own characters and object. Primary action: *Let’s read together.* |
@@ -34,7 +35,7 @@ npm run build && npm start
 
 ### The six rounds
 
-1. **Where shall we go?** Child taps Little Crumb, the park or the station in the picture.
+1. **Where shall we go?** (The hero is called Maya below; in a real book it’s the child.) Child taps Little Crumb, the park or the station in the picture.
 2. **A little discovery.** Child taps one of three objects at that place. Grown-up decides what makes it special: a note / very old / does something surprising / *write your own*.
 3. **Something unexpected.** Grown-up picks the twist: wind / a cheeky animal / rain. Child picks Maya’s reaction, which sets her trait (quick / cheerful / clever). The last page comes back to that trait.
 4. **A new friend.** Child taps Grandpa Otis, Juniper or Biscuit the dog. Grown-up says what they need: lost / lonely / *the object is theirs* / *write your own*.
@@ -46,6 +47,7 @@ Every choice changes the text and the picture. The test suite checks that no two
 ## Architecture
 
 ```
+lib/story/hero.ts      Hero model (name, she/he/they, look) and heroize(): fills name/pronoun/coat tokens in all text
 lib/story/content.ts   Story bible: places, objects, twists, cast, needs, plans, endings, all prose fragments
 lib/story/engine.ts    Story state, step order + whose turn, options, validation, prose assembly, titles,
                        restore() (replays saved choices through the rules), share-link encode/decode
@@ -57,7 +59,8 @@ lib/analytics.ts       Anonymous event names only → /api/events (server log). 
 components/art/        The illustration system (hand-authored SVG)
   defs.tsx               shared pen-wobble + paper-tooth filters; Shape/Limb/Ink primitives
   palette.ts             the one limited palette
-  Maya.tsx               Maya’s model sheet in code: 14 poses × 8 expressions
+  Maya.tsx               the hero template (Maya is the default look): 14 poses × 8 expressions,
+                         parametrised by skin, hairstyle, hair colour, coat and glasses
   cast.tsx               Otis, Juniper, Biscuit, Mrs. Penny, cat, squirrel, pigeon
   objects.tsx            9 discovery objects (+ note/old/curious looks), thought bubbles, rain, wind, props
   scenery.tsx            trees, lamp, bench, houses, Little Crumb, train, pond…
@@ -66,7 +69,7 @@ components/art/        The illustration system (hand-authored SVG)
 components/studio/     Home, Authors, Make (canvas + turn panel + book strip), Cover, Reader, ShareSheet, exporter
 ```
 
-**Art approach.** Every asset is hand-authored SVG in the same world units. One shared filter turns the geometry into a steady pen line with a little paper tooth. Washes sit slightly off-register, the way they do in printed books. A larger, looser filter blooms the edges of skies and hills. Characters are reusable components with poses and expressions, so Maya looks the same on every page. Scenes are layered (backdrop → actors → weather), and actors move by animating their layer, so the heavy backdrop never repaints.
+**Art approach.** Every asset is hand-authored SVG in the same world units. One shared filter turns the geometry into a steady pen line with a little paper tooth. Washes sit slightly off-register, the way they do in printed books. A larger, looser filter blooms the edges of skies and hills. Characters are reusable components with poses and expressions, so the hero looks the same on every page. Scenes are layered (backdrop → actors → weather), and actors move by animating their layer, so the heavy backdrop never repaints.
 
 **Reliability.** Stories are deterministic templates filled with the authors’ choices, so there is no network dependency and no waiting. A typed custom answer is cleaned (markup stripped, length capped) and woven into sentence frames that work with any wording. Progress autosaves after every choice. Reload and you’ll see *Continue our book*.
 
@@ -79,7 +82,8 @@ Same as V1: any Node host that runs Next.js (for example Vercel), build with `np
 ## Known limitations
 
 - The art is hand-coded vector illustration in a classic picture-book idiom. It is consistent and original, but it is not a professional illustrator’s brushwork. The component boundaries (characters, poses, objects, backdrops) are designed so an illustrator’s artwork can replace them one piece at a time.
-- One world (Maple Street), one protagonist and three friends. Seated poses exist for Maya only.
+- One world (Maple Street) and three friends. The hero is built from a fixed set of drawn parts; there’s no free-form customization, and that’s intentional. Seated poses exist for the hero only.
+- Story text uses the hero’s pronouns (she/he/they). Juniper and Mrs. Penny keep their own.
 - Custom answers change the text but not the pictures; the picture falls back to the closest built-in choice.
 - No voice input. Typed custom answers only.
 - The shared link holds the whole book (around 300–400 characters), so it is long but works without a server.

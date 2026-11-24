@@ -4,6 +4,7 @@ import { PLACES } from '@/lib/story/content';
 import { P } from '../art/palette';
 import { Ink, Shape } from '../art/defs';
 import { Maya, type Expression, type MayaPose } from '../art/Maya';
+import type { HeroLook } from '@/lib/story/hero';
 import { Baker, Biscuit, Cat, Juniper, Otis, Pigeon, Squirrel } from '../art/cast';
 import { Prop, Thing, Thought } from '../art/objects';
 import { Bakery, Cloud, Lamp, Train, Tree } from '../art/scenery';
@@ -17,7 +18,7 @@ function Box({ children, vb }: { children: React.ReactNode; vb: string }) {
   return <svg viewBox={vb} width="100%" height="100%" aria-hidden="true" overflow="visible"><g filter="url(#ink)">{children}</g></svg>;
 }
 
-export function ChoiceArt({ art }: { art: OptionArt }) {
+export function ChoiceArt({ art, look }: { art: OptionArt; look?: HeroLook }) {
   switch (art.kind) {
     case 'place':
       if (art.id === 'bakery') return <Box vb="0 0 520 500"><Bakery x={0} y={500} /></Box>;
@@ -29,7 +30,7 @@ export function ChoiceArt({ art }: { art: OptionArt }) {
       if (art.id === 'wind') return <Box vb="0 0 120 100"><Ink d="M10 34 q34 -14 64 0 q16 8 24 -4 q4 -8 -4 -10 M16 58 q40 -10 84 2 M24 80 q24 -8 50 0" sw={4} /><Shape d="M86 66 q8 -10 18 -3 q-5 11 -18 3z" fill={P.ochre} sw={2.4} /></Box>;
       if (art.id === 'rain') return <Box vb="-70 -40 140 120"><Cloud x={0} y={0} w={120} seed={3} /><Ink d="M-34 26 l-6 16 M-6 30 l-6 16 M22 26 l-6 16 M-20 54 l-6 16 M10 56 l-6 16 M38 52 l-6 16" sw={4} color={P.blue} /></Box>;
       { const a = PLACES[art.place].animal; return a === 'cat' ? <Cat run /> : a === 'squirrel' ? <Squirrel /> : <Pigeon />; }
-    case 'pose': { const [p, e] = POSE[art.id] ?? ['stand', 'happy']; return <Maya pose={p} expr={e} />; }
+    case 'pose': { const [p, e] = POSE[art.id] ?? ['stand', 'happy']; return <Maya pose={p} expr={e} look={look} />; }
     case 'friend':
       return <div className="portrait">{art.id === 'otis' ? <Otis /> : art.id === 'juniper' ? <Juniper /> : <Biscuit />}</div>;
     case 'need':
@@ -47,7 +48,7 @@ export function ChoiceArt({ art }: { art: OptionArt }) {
     case 'ending':
       if (art.id === 'picnic') return <Prop id="picnic" />;
       if (art.id === 'home') return <Box vb="-60 -280 120 290"><Lamp x={0} y={0} lit /></Box>;
-      return <Maya pose="wave" expr="delighted" />;
+      return <Maya pose="wave" expr="delighted" look={look} />;
     default: return null;
   }
 }

@@ -176,7 +176,7 @@ svg{display:block;width:100%;height:auto}
 <section class="title"><h2>${esc(title)}</h2><p>written by <strong>${esc(child)}</strong> and <strong>${esc(grownup)}</strong></p><p><em>A Maple Street story · ${esc(date)}</em></p></section>
 ${text.map((_, i) => page(i)).join('\n')}
 <section class="end">The End<small>…until next time, on Maple Street.</small></section>
-<section class="authors"><p>This book was made by</p><p class="names">${esc(child)} &amp; ${esc(grownup)}</p><p>on ${esc(date)}${w.object ? `, starring Maya and ${esc(THINGS[w.object].the)}` : ''}.</p><p class="made">Made together with Crafta · Little books. Big memories.</p></section>
+<section class="authors"><p>This book was made by</p><p class="names">${esc(child)} &amp; ${esc(grownup)}</p><p>on ${esc(date)}${w.object ? `, starring ${esc(story.hero.name)} and ${esc(THINGS[w.object].the)}` : ''}.</p><p class="made">Made together with Crafta · Little books. Big memories.</p></section>
 </body></html>`;
 }
 

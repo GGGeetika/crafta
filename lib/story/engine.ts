@@ -2,6 +2,7 @@ import {
   ENDINGS, FRIENDS, NEEDS, PLACES, PLANS, RESPONSES, SPECIALS, THINGS, TWISTS,
   type EndingId, type FriendId, type NeedId, type ObjectId, type PlaceId, type PlanId, type ResponseId, type SpecialId, type Trait, type TwistId,
 } from './content.ts';
+import { MAYA, heroize, restoreHero, type Hero } from './hero.ts';
 
 export type Who = 'child' | 'grownup' | 'together';
 export type StepId = 'place' | 'object' | 'special' | 'twist' | 'response' | 'friend' | 'need' | 'plan' | 'ending' | 'title';
@@ -15,6 +16,8 @@ export type Story = {
   createdAt: number;
   updatedAt: number;
   authors: Authors;
+  /** The little author, drawn as the hero of the book. */
+  hero: Hero;
   picks: Partial<Record<StepId, Choice>>;
   finishedAt?: number;
 };
@@ -57,8 +60,8 @@ export function cleanName(text: string) {
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const sentence = (s: string) => { const c = cap(clean(s)); return /[.!?…”"’)]$/.test(c) ? c : `${c}.`; };
 
-export function newStory(authors: Authors, now = Date.now()): Story {
-  return { v: 2, id: `b${now.toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`, createdAt: now, updatedAt: now, authors: { child: cleanName(authors.child), grownup: cleanName(authors.grownup) }, picks: {} };
+export function newStory(authors: Authors, now = Date.now(), hero: Hero = MAYA): Story {
+  return { v: 2, id: `b${now.toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`, createdAt: now, updatedAt: now, authors: { child: cleanName(authors.child), grownup: cleanName(authors.grownup) }, hero: restoreHero(hero, cleanName), picks: {} };
 }
 
 export function authorNames(s: Story) {
@@ -118,25 +121,34 @@ export function world(s: Story): World {
 /* the questions                                                        */
 
 export function prompt(s: Story, step: StepId) {
+  const q = promptRaw(s, step);
+  return { ...q, ask: heroize(q.ask, s.hero) };
+}
+
+function promptRaw(s: Story, step: StepId) {
   const { child, grownup } = authorNames(s);
   const w = world(s);
   const t = w.object ? THINGS[w.object] : null;
   const f = w.friend ? FRIENDS[w.friend] : null;
   switch (step) {
-    case 'place': return { ask: 'Where shall Maya go today?', hint: 'Tap a place in the picture', name: child };
-    case 'object': return { ask: 'What has Maya spotted?', hint: 'Tap something in the picture', name: child };
+    case 'place': return { ask: 'Where shall {N} go today?', hint: 'Tap a place in the picture', name: child };
+    case 'object': return { ask: 'What has {N} spotted?', hint: 'Tap something in the picture', name: child };
     case 'special': return { ask: `What makes ${t?.the ?? 'it'} special?`, hint: 'Pick one, or write your own', name: grownup };
     case 'twist': return { ask: 'Then something unexpected happens…', hint: 'What is it?', name: grownup };
-    case 'response': return { ask: 'What does Maya do?', hint: 'Pick one', name: child };
-    case 'friend': return { ask: 'Who did Maya meet?', hint: 'Tap someone in the picture', name: child };
+    case 'response': return { ask: 'What does {N} do?', hint: 'Pick one', name: child };
+    case 'friend': return { ask: 'Who did {N} meet?', hint: 'Tap someone in the picture', name: child };
     case 'need': return { ask: f?.isDog ? 'What’s the matter with Biscuit?' : `What is ${f?.name ?? 'our new friend'} worried about?`, hint: 'Pick one, or write your own', name: grownup };
-    case 'plan': return { ask: `How can Maya help ${f?.name ?? 'her friend'}?`, hint: 'Talk it over and choose together', name: `${child} & ${grownup}` };
+    case 'plan': return { ask: `How can {N} help ${f?.name ?? '{pos} friend'}?`, hint: 'Talk it over and choose together', name: `${child} & ${grownup}` };
     case 'ending': return { ask: 'How should our story end?', hint: 'Choose together', name: `${child} & ${grownup}` };
     case 'title': return { ask: 'What shall we call our book?', hint: 'Choose together, or make one up', name: `${child} & ${grownup}` };
   }
 }
 
 export function options(s: Story, step: StepId = currentStep(s) ?? 'title'): Option[] {
+  return optionsRaw(s, step).map((o) => ({ ...o, label: heroize(o.label, s.hero) }));
+}
+
+function optionsRaw(s: Story, step: StepId): Option[] {
   const w = world(s);
   const place = w.place ?? 'park';
   const obj = w.object ?? PLACES[place].objects[0];
@@ -170,7 +182,7 @@ function planLabel(id: PlanId, place: PlaceId, obj: ObjectId, friend: FriendId) 
     case 'introduce': return `Introduce ${f.him} to the neighbors`;
     case 'share': return THINGS[obj].shareLabel;
     case 'giveback': return 'Give it back right away';
-    case 'guess': return 'Make it a guessing game';
+    case 'guess': return 'Play “which hand?” first';
     case 'party': return 'Have a welcome-home party';
   }
 }
@@ -180,7 +192,7 @@ export function isValidChoice(s: Story, step: StepId, choice: Choice) {
   if (!choice || typeof choice.id !== 'string') return false;
   if (choice.id === 'custom') return STEP_META[step].custom && typeof choice.text === 'string' && clean(choice.text).length > 0;
   if (step === 'title') return typeof choice.text === 'string' ? clean(choice.text, 80).length > 0 : titles(s).includes(choice.id);
-  return options(s, step).some((o) => o.id === choice.id);
+  return optionsRaw(s, step).some((o) => o.id === choice.id);
 }
 
 export function choose(s: Story, choice: Choice, now = Date.now()): Story {
@@ -219,6 +231,10 @@ export function pages(s: Story): Page[] {
 }
 
 export function pageText(s: Story, page: number): string {
+  return heroize(pageTextRaw(s, page), s.hero);
+}
+
+function pageTextRaw(s: Story, page: number): string {
   const w = world(s);
   if (!w.place) return '';
   const pl = PLACES[w.place];
@@ -229,32 +245,32 @@ export function pageText(s: Story, page: number): string {
   switch (page) {
     case 1: return pl.opening;
     case 2: {
-      const special = w.special === 'custom' ? `Maya could tell straight away that it was special. ${sentence(w.specialText ?? '')}` : w.special ? SPECIALS[w.special].line(t) : '';
-      return `${t.found} ${special} Maya held it carefully. “Hello,” she whispered. “Where did you come from?”`;
+      const special = w.special === 'custom' ? `{N} could tell straight away that it was special. ${sentence(w.specialText ?? '')}` : w.special ? SPECIALS[w.special].line(t) : '';
+      return `${t.found} ${special} {N} held it carefully. “Hello,” {sub} whispered. “Where did you come from?”`;
     }
     case 3: {
       const intro = w.twist === 'wind' ? `Just then, a great gust of wind came whooshing down Maple Street ${t.wind}`
         : w.twist === 'animal' ? `Just then, a cheeky ${animal} darted out from nowhere, ${t.animal}`
         : 'Just then — plip, plop, plip — it began to rain! Big round drops bounced on the pavement, and everyone on Maple Street ran for cover.';
       const resp: Record<ResponseId, string> = {
-        run: 'Maya ran after it as fast as her legs would go, her satchel bumping behind her.',
-        jump: 'Maya jumped as high as she could — higher than she had ever jumped before — and missed it by a whisker.',
-        watch: 'Maya stood very still and watched. Up it went… along… and down, down, down.',
-        chase: `“Hey!” laughed Maya, and off she ran after the ${animal}, round the lamp post and back again.`,
-        call: `“Come back!” called Maya, in her very biggest voice. The ${animal} did not come back. ${cap(animal)}s hardly ever do.`,
-        trick: `Maya crouched down and held out a crumb from her pocket. The ${animal} stopped. It sniffed. Then it dropped ${t.the} to take the crumb.`,
-        dash: `Maya dashed under the ${pl.shelter}, quick as a wink, holding ${t.the} close.`,
-        splash: `Maya did not run. Maya splashed — in every single puddle, all the way to the ${pl.shelter}.`,
-        cover: `Maya held her satchel over her head like a very small roof and hurried under the ${pl.shelter}.`,
+        run: '{N} ran after it as fast as {pos} legs would go, {pos} satchel bumping behind {obj}.',
+        jump: '{N} jumped as high as {sub} could — higher than {sub} had ever jumped before — and missed it by a whisker.',
+        watch: '{N} stood very still and watched. Up it went… along… and down, down, down.',
+        chase: `“Hey!” laughed {N}, and off {sub} ran after the ${animal}, round the lamp post and back again.`,
+        call: `“Come back!” called {N}, in {pos} very biggest voice. The ${animal} did not come back. ${cap(animal)}s hardly ever do.`,
+        trick: `{N} crouched down and held out a crumb from {pos} pocket. The ${animal} stopped. It sniffed. Then it dropped ${t.the} to take the crumb.`,
+        dash: `{N} dashed under the ${pl.shelter}, quick as a wink, holding ${t.the} close.`,
+        splash: `{N} did not run. {N} splashed — in every single puddle, all the way to the ${pl.shelter}.`,
+        cover: `{N} held {pos} satchel over {pos} head like a very small roof and hurried under the ${pl.shelter}.`,
       };
-      const cliff = w.twist === 'rain' ? 'But Maya was not the only one sheltering there.' : `And where did ${t.the} end up? Right at the feet of someone Maya had never met before.`;
+      const cliff = w.twist === 'rain' ? 'But {N} was not the only one sheltering there.' : `And where did ${t.the} end up? Right at the feet of someone {N} had never met before.`;
       return `${intro} ${w.response ? resp[w.response] : ''} ${cliff}`;
     }
     case 4: {
       const rain = w.twist === 'rain';
       const holding = rain
-        ? (f.id === 'biscuit' ? 'He shook the rain from his coat — all over Maya, which made her giggle.' : f.id === 'otis' ? 'He shook the raindrops from his cap.' : 'She was squeezing the rain out of her braids.')
-        : (f.isDog ? `He was holding ${t.the} in his mouth, very gently, as if he knew it mattered.` : `${He} was holding ${t.the}.`);
+        ? (f.id === 'biscuit' ? 'He shook the rain from his coat — all over {N}, which made {obj} giggle.' : f.id === 'otis' ? 'He shook the raindrops from his cap.' : 'She was squeezing the rain out of her braids.')
+        : (f.isDog ? `He had ${t.the} in his mouth, very gently, as if he knew it mattered — and he dropped it right at {N’s} feet.` : `${He} had caught ${t.the}, and was holding it out to {N}.`);
       return `${f.intro} ${holding} ${needLine(w, f.id, t.the, rain)}`;
     }
     case 5: {
@@ -263,10 +279,10 @@ export function pageText(s: Story, page: number): string {
     }
     case 6: {
       const end = endingLine(w, f.id, pl.id);
-      const trait = w.trait === 'quick' ? 'It had been a day for being quick on your feet, and Maya had been quick when it mattered.'
-        : w.trait === 'cheerful' ? 'It had been a surprising sort of day, and Maya had laughed her way through every bit of it.'
-        : 'Maya had stopped, and looked, and thought — and that had made all the difference.';
-      return `${end} ${trait} That night, Maya drew ${t.the} in her notebook, so she would never forget the day it brought her a new friend.`;
+      const trait = w.trait === 'quick' ? 'It had been a day for being quick on your feet, and {N} had been quick when it mattered.'
+        : w.trait === 'cheerful' ? 'It had been a surprising sort of day, and {N} had laughed {pos} way through every bit of it.'
+        : '{N} had stopped, and looked, and thought — and that had made all the difference.';
+      return `${end} ${trait} That night, {N} drew ${t.the} in {pos} notebook, so {sub} would never forget the day it brought {obj} a new friend.`;
     }
   }
   return '';
@@ -284,16 +300,16 @@ function needLine(w: World, friend: FriendId, the: string, rain: boolean) {
   if (w.need === 'lonely') {
     if (friend === 'otis') return '“My old friends have all moved away,” said Otis quietly. “It’s been a long time since anyone stopped to say good morning.”';
     if (friend === 'juniper') return '“I’m new here,” said Juniper, looking down at her boots. “I don’t know anybody yet.”';
-    return 'Biscuit looked up at Maya and wagged — just the tip of his tail. He didn’t have anyone to play with.';
+    return 'Biscuit looked up at {N} and wagged — just the tip of his tail. He didn’t have anyone to play with.';
   }
   if (w.need === 'searching') {
     const sp = w.special;
     if (f.isDog) {
-      const cb = sp === 'old' ? ' It had belonged to his family for years and years.' : sp === 'note' ? ' The note had worked: Maya had looked after it beautifully.' : sp === 'curious' ? ' Perhaps that was why it had been behaving so strangely — it had been trying to find him.' : '';
+      const cb = sp === 'old' ? ' It had belonged to his family for years and years.' : sp === 'note' ? ' The note had worked: {N} had looked after it beautifully.' : sp === 'curious' ? ' Perhaps that was why it had been behaving so strangely — it had been trying to find him.' : '';
       return `Biscuit barked and spun round three times. ${The} belonged to his family, and he had been searching for it everywhere!${cb}`;
     }
     const first = friend === 'otis' ? '“Well, I never!” said Otis, and his eyes went round behind his glasses. “That’s mine! I’ve been looking for it all morning.”' : '“That’s mine!” gasped Juniper. “I’ve looked everywhere for it!”';
-    const hug = friend === 'otis' ? ' He held it close.' : ' She hugged it tight.';
+    const hug = friend === 'otis' ? ' He looked at it very closely.' : ' She looked at it very closely.';
     const cb = sp === 'old' ? hug + (friend === 'otis' ? ' “I’ve had it since I was a boy no bigger than you.”' : ' “It was my grandma’s, when she was little.”')
       : sp === 'note' ? `${hug} “I wrote that note myself,” ${f.he} said, “just in case.”`
       : sp === 'curious' ? `${hug} “It always does that,” ${f.he} said. “I think it was trying to find me.”` : '';
@@ -308,16 +324,16 @@ function planLine(w: World, friend: FriendId, place: PlaceId, obj: ObjectId) {
   const pl = PLACES[place];
   const dog = f.isDog;
   switch (w.plan) {
-    case 'map': return `“Let’s draw a map!” said Maya. She took a pencil from her satchel, and together they drew all of Maple Street: Little Crumb, the park, the station on the hill.${dog ? ' Biscuit put his paw right on one little house and barked. That was the one!' : ` ${f.name} pointed. “There! The house with the blue door!”`} And off they went, with the map leading the way.`;
-    case 'ask': return `“Mrs. Penny knows everybody,” said Maya. So they went to Little Crumb, where Mrs. Penny wiped her floury hands on her apron. “Why, of course!” she said. “Down Maple Street, past the lamp post — the house with the blue door.” She even gave them a bun each for the journey.`;
-    case 'follow': return `“I know,” said Maya. “Let’s follow ${pl.follow}.” So they did — around one corner, and then another, and then one more — until ${dog ? 'Biscuit stopped, sniffed, and barked and barked.' : `${f.name} stopped. “Here! I know this street!”`} There was the blue door, and there was home.`;
-    case 'play': return `Maya took a piece of chalk from her satchel and drew a hopscotch on the pavement. One, two, three — hop! ${friend === 'otis' ? 'Otis was surprisingly good at it. Soon they were both laughing too hard to hop at all.' : friend === 'juniper' ? 'Juniper could hop all the way to five on one foot. Soon they were both laughing too hard to hop at all.' : 'Biscuit didn’t know the rules, so he made up his own. They mostly involved jumping on Maya.'}`;
-    case 'introduce': return `So Maya took ${f.name} all the way along Maple Street. They said hello to Mrs. Penny at Little Crumb, to the ducks in the park and to the station master, who tipped his cap. By the end of the morning, everybody on Maple Street knew ${f.name}’s name.`;
-    case 'share': return `“We could share it,” said Maya. ${t.share}`;
-    case 'giveback': return `Maya held out ${t.the}. “I think this belongs to you,” she said. ${dog ? 'Biscuit took it ever so gently, and his whole back end wagged.' : `${f.name}’s face lit up like a lamp at teatime. “Thank you,” ${f.he} said. “You’ve made my whole day.”`}`;
-    case 'guess': return `Maya hid ${t.the} behind her back. “I’ve found something,” she said. “Guess what it is!” ${dog ? 'Biscuit sniffed, and sniffed, and found it in two seconds flat.' : `${f.name} guessed a teapot, an elephant and a pickle before ${f.he} guessed right. Then they laughed until their tummies hurt.`}`;
-    case 'party': return `“Something lost has come home,” said Maya. “That calls for a party!” So Mrs. Penny hung paper flags across Maple Street, and everybody shared a slice of lemon cake.${dog ? ' Biscuit had two slices. Nobody minded.' : ''}`;
-    case 'custom': return `Maya and ${f.name} put their heads together, and this is what they decided: ${sentence(w.planText ?? '')} And would you believe it? It worked.`;
+    case 'map': return `“Let’s draw a map!” said {N}. {Sub} took a pencil from {pos} satchel, and together they drew all of Maple Street: Little Crumb, the park, the station on the hill.${dog ? ' Biscuit put his paw right on one little house and barked. That was the one!' : ` ${f.name} pointed. “There! The house with the blue door!”`} And off they went, with the map leading the way.`;
+    case 'ask': return `“Mrs. Penny knows everybody,” said {N}. So they went to Little Crumb, where Mrs. Penny wiped her floury hands on her apron. “Why, of course!” she said. “Down Maple Street, past the lamp post — the house with the blue door.” She even gave them a bun each for the journey.`;
+    case 'follow': return `“I know,” said {N}. “Let’s follow ${pl.follow}.” So they did — around one corner, and then another, and then one more — until ${dog ? 'Biscuit stopped, sniffed, and barked and barked.' : `${f.name} stopped. “Here! I know this street!”`} There was the blue door, and there was home.`;
+    case 'play': return `{N} took a piece of chalk from {pos} satchel and drew a hopscotch on the pavement. One, two, three — hop! ${friend === 'otis' ? 'Otis was surprisingly good at it. Soon they were both laughing too hard to hop at all.' : friend === 'juniper' ? 'Juniper could hop all the way to five on one foot. Soon they were both laughing too hard to hop at all.' : 'Biscuit didn’t know the rules, so he made up his own. They mostly involved jumping on {N}.'}`;
+    case 'introduce': return `So {N} took ${f.name} all the way along Maple Street. They said hello to Mrs. Penny at Little Crumb, to the ducks in the park and to the station master, who tipped his cap. By the end of the morning, everybody on Maple Street knew ${f.name}’s name.`;
+    case 'share': return `“We could share it,” said {N}. ${t.share}`;
+    case 'giveback': return `{N} held out ${t.the}. “I think this belongs to you,” {sub} said. ${dog ? 'Biscuit took it ever so gently, and his whole back end wagged.' : `${f.name}’s face lit up like a lamp at teatime. “Thank you,” ${f.he} said. “You’ve made my whole day.”`}`;
+    case 'guess': return `{N} put ${t.the} behind {pos} back. “Before I give it back,” {sub} said, “you have to guess which hand!” ${dog ? 'Biscuit sniffed one hand, then the other, and found it in two seconds flat.' : `${f.name} guessed the left hand, then the right hand, then both hands, then the left again. They laughed until their tummies hurt — and then ${f.name} got ${t.the} back.`}`;
+    case 'party': return `“Something lost has come home,” said {N}. “That calls for a party!” So Mrs. Penny hung paper flags across Maple Street, and everybody shared a slice of lemon cake.${dog ? ' Biscuit had two slices. Nobody minded.' : ''}`;
+    case 'custom': return `{N} and ${f.name} put their heads together, and this is what they decided: ${sentence(w.planText ?? '')} And would you believe it? It worked.`;
   }
   return '';
 }
@@ -326,8 +342,8 @@ function endingLine(w: World, friend: FriendId, place: PlaceId) {
   const f = FRIENDS[friend];
   switch (w.ending) {
     case 'picnic': return `Afterwards, they sat on ${PLACES[place].seat} and shared warm buns from Little Crumb, still sticky with sugar.${f.isDog ? ' Biscuit ate his in one bite.' : ''}`;
-    case 'home': return `By the time they were done, the sky had turned the color of apricot jam, and the streetlamps blinked on one by one. Maya and ${f.name} walked home together along Maple Street.`;
-    case 'tomorrow': return f.isDog ? '“Will you come back tomorrow?” asked Maya. Biscuit barked once, which everybody knows means yes. Maya waved all the way to the corner.' : `“Will you come back tomorrow?” asked ${f.name}. “Same time, same place,” said Maya, and she waved all the way to the corner.`;
+    case 'home': return `By the time they were done, the sky had turned the color of apricot jam, and the streetlamps blinked on one by one. {N} and ${f.name} walked home together along Maple Street.`;
+    case 'tomorrow': return f.isDog ? '“Will you come back tomorrow?” asked {N}. Biscuit barked once, which everybody knows means yes. {N} waved all the way to the corner.' : `“Will you come back tomorrow?” asked ${f.name}. “Same time, same place,” said {N}, and {sub} waved all the way to the corner.`;
     case 'custom': return `And here is how the day ended: ${sentence(w.endingText ?? '')}`;
   }
   return '';
@@ -338,13 +354,13 @@ function endingLine(w: World, friend: FriendId, place: PlaceId) {
 
 export function titles(s: Story): string[] {
   const w = world(s);
-  if (!w.object || !w.friend) return ['Maya’s Big Day'];
+  if (!w.object || !w.friend) return [heroize('{N’s} Big Day', s.hero)];
   const t = THINGS[w.object];
   const f = FRIENDS[w.friend];
   const first = w.twist === 'rain' ? `The Rainy-Day ${t.title}` : `The Runaway ${t.title}`;
-  const second = w.need === 'lost' ? `${f.name} Finds the Way Home` : w.need === 'lonely' ? `A Friend for ${f.name}` : w.need === 'searching' ? `The ${t.title} That Found ${f.name}` : `Maya and ${f.name}`;
-  const third = w.need === 'searching' ? `Maya and ${f.name}` : `The ${t.title} That Found a Friend`;
-  return Array.from(new Set([first, second, third]));
+  const second = w.need === 'lost' ? `${f.name} Finds the Way Home` : w.need === 'lonely' ? `A Friend for ${f.name}` : w.need === 'searching' ? `The ${t.title} That Found ${f.name}` : `{N} and ${f.name}`;
+  const third = w.need === 'searching' ? `{N} and ${f.name}` : `The ${t.title} That Found a Friend`;
+  return Array.from(new Set([first, second, third].map((t) => heroize(t, s.hero))));
 }
 
 export function bookTitle(s: Story) {
@@ -362,7 +378,7 @@ export function restore(value: unknown): Story | null {
   const a = v.authors as Partial<Authors>;
   if (typeof a.child !== 'string' || typeof a.grownup !== 'string') return null;
   const createdAt = typeof v.createdAt === 'number' ? v.createdAt : Date.now();
-  let s: Story = { v: 2, id: v.id.slice(0, 40), createdAt, updatedAt: createdAt, authors: { child: cleanName(a.child), grownup: cleanName(a.grownup) }, picks: {} };
+  let s: Story = { v: 2, id: v.id.slice(0, 40), createdAt, updatedAt: createdAt, authors: { child: cleanName(a.child), grownup: cleanName(a.grownup) }, hero: restoreHero(v.hero, cleanName), picks: {} };
   for (const step of STEPS) {
     const c = (v.picks as Record<string, Choice | undefined>)[step];
     if (!c) break;
@@ -389,7 +405,15 @@ function b64urlDecode(text: string) {
 /** A compact, self-contained encoding of a finished book for a private link. */
 export function encodeBook(s: Story) {
   const p = STEPS.map((k) => { const c = s.picks[k]; return c ? (c.text !== undefined ? [c.id, c.text] : c.id) : null; });
-  return b64urlEncode(JSON.stringify({ a: [s.authors.child, s.authors.grownup], p, t: s.finishedAt ?? s.updatedAt, i: s.id }));
+  const { name, pronoun, look: l } = s.hero;
+  const h = [name, pronoun, l.skin, l.hair, l.hairColor, l.coat, l.glasses ? 1 : 0];
+  return b64urlEncode(JSON.stringify({ a: [s.authors.child, s.authors.grownup], h, p, t: s.finishedAt ?? s.updatedAt, i: s.id }));
+}
+
+function heroFromArray(h: unknown) {
+  if (!Array.isArray(h)) return undefined;
+  const [name, pronoun, skin, hair, hairColor, coat, glasses] = h;
+  return { name, pronoun, look: { skin, hair, hairColor, coat, glasses: glasses === 1 } };
 }
 
 export function decodeBook(code: string): Story | null {
@@ -399,7 +423,7 @@ export function decodeBook(code: string): Story | null {
     const picks: Record<string, Choice> = {};
     STEPS.forEach((k, i) => { const c = d.p[i]; if (typeof c === 'string') picks[k] = { id: c }; else if (Array.isArray(c)) picks[k] = { id: String(c[0]), text: String(c[1]) }; });
     const t = typeof d.t === 'number' ? d.t : Date.now();
-    return restore({ v: 2, id: typeof d.i === 'string' ? d.i : `shared${t}`, createdAt: t, updatedAt: t, finishedAt: t, authors: { child: String(d.a[0] ?? ''), grownup: String(d.a[1] ?? '') }, picks });
+    return restore({ v: 2, id: typeof d.i === 'string' ? d.i : `shared${t}`, createdAt: t, updatedAt: t, finishedAt: t, authors: { child: String(d.a[0] ?? ''), grownup: String(d.a[1] ?? '') }, hero: heroFromArray(d.h), picks });
   } catch {
     return null;
   }

@@ -164,7 +164,7 @@ export function Make({ story, onChange, onFinish, onHome }: { story: Story; onCh
               <div className={`choices${meta.world ? ' choices-world' : ''}`}>
                 {opts.map((o) => (
                   <button type="button" key={o.id} className="choice" onClick={() => pick(o.id)}>
-                    <span className="choice-art"><ChoiceArt art={o.art} /></span>
+                    <span className="choice-art"><ChoiceArt art={o.art} look={story.hero.look} /></span>
                     <span className="choice-label">{o.label}</span>
                   </button>
                 ))}
@@ -187,7 +187,7 @@ export function Make({ story, onChange, onFinish, onHome }: { story: Story; onCh
         <BookStrip story={story} fresh={fresh} onOpen={setPeek} />
       </aside>
       {peek && <PageView story={story} n={peek} onClose={() => setPeek(null)} />}
-      <span className="sr" aria-live="polite">{w.object ? `Maya has ${THINGS[w.object].the}.` : ''}</span>
+      <span className="sr" aria-live="polite">{w.object ? `${story.hero.name} has ${THINGS[w.object].the}.` : ''}</span>
     </div>
   );
 }

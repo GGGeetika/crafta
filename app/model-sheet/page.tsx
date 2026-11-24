@@ -1,5 +1,7 @@
 'use client';
-import { Maya, type MayaPose, type Expression } from '@/components/art/Maya';
+import { Maya, HeroHead, type MayaPose, type Expression } from '@/components/art/Maya';
+import { HAIRS, SKINS, HAIR_COLORS, COATS, type HeroLook } from '@/lib/story/hero';
+const heroes: HeroLook[] = HAIRS.flatMap((hair, i) => [0, 1].map((k) => ({ hair, skin: SKINS[(i * 2 + k) % 5], hairColor: HAIR_COLORS[(i + k * 2) % 4], coat: COATS[(i + k) % 4], glasses: (i + k) % 3 === 0 })));
 import { Backdrop, type BackdropId } from '@/components/art/backdrops';
 import { Otis, Juniper, Biscuit, Baker, Cat, Squirrel, Pigeon, type CastExpr } from '@/components/art/cast';
 import { Thing, Thought, Prop, OBJECT_BOX, type ObjectId, type PropId } from '@/components/art/objects';
@@ -14,6 +16,13 @@ export default function ModelSheet() {
   return (
     <main className="sheet">
       <h1>Crafta studio — model sheet</h1>
+      <p>Heroes — built from parts</p>
+      <div className="sheet-row" style={{ alignItems: 'flex-end' }}>
+        {heroes.map((l, i) => <figure key={i}><div style={{ width: 120, height: 172 }}><Maya look={l} pose={(['stand', 'wave', 'run', 'hold', 'jump'] as MayaPose[])[i % 5]} expr={(['happy', 'delighted', 'determined', 'curious', 'delighted'] as Expression[])[i % 5]} /></div><figcaption>{l.hair} · {l.skin}</figcaption></figure>)}
+      </div>
+      <div className="sheet-row">
+        {heroes.map((l, i) => <div key={i} style={{ width: 90, height: 90 }}><HeroHead look={l} /></div>)}
+      </div>
       <p>Maple Street</p>
       <div className="sheet-row">
         {scenes.map((s) => (

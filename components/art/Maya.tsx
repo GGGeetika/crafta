@@ -1,5 +1,7 @@
 import { P } from './palette';
 import { Ink, Limb, Shape } from './defs';
+import { scallop } from './shapes';
+import { MAYA_LOOK, type CoatId, type HairColorId, type HeroLook, type SkinId } from '@/lib/story/hero';
 
 /**
  * MAYA — model sheet in code.
@@ -100,31 +102,105 @@ function Satchel({ where }: { where: 'hip' | 'head' }) {
   );
 }
 
-function Head({ expr, tilt = 0 }: { expr: Expression; tilt?: number }) {
+export const SKIN_COLOR: Record<SkinId, string> = { deep: '#6e4532', brown: P.mayaSkin, tan: '#b07a52', olive: '#caa07a', fair: '#ecc8a6' };
+export const HAIR_COLOR: Record<HairColorId, string> = { black: P.hair, brown: '#5b3a26', auburn: '#94502c', blond: '#d4a755' };
+export const COAT_COLOR: Record<CoatId, string> = { ochre: P.ochre, terracotta: P.terracotta, blue: P.blue, green: '#8fa67d' };
+
+/** Hair behind the head: puffs, a curly cloud, braids or a bob. */
+function HairBack({ look }: { look: HeroLook }) {
+  const c = HAIR_COLOR[look.hairColor];
+  switch (look.hair) {
+    case 'puffs':
+      return <>
+        <Shape d="M38 40 q-6 -14 6 -20 q4 -10 15 -5 q11 -2 12 10 q8 8 0 17 q-4 9 -14 7 q-8 6 -15 -1 q-9 -1 -4 -8z" fill={c} op={1} />
+        <Shape d="M122 40 q6 -14 -6 -20 q-4 -10 -15 -5 q-11 -2 -12 10 q-8 8 0 17 q4 9 14 7 q8 6 15 -1 q9 -1 4 -8z" fill={c} op={1} />
+      </>;
+    case 'curls': return <Shape d={scallop(80, 56, 43, 38, 13, 0.24, 17)} fill={c} op={1} />;
+    case 'braids':
+      return <>
+        <Limb d="M53 66 Q46 94 51 118" color={c} w={11} />
+        <Limb d="M107 66 Q114 94 109 118" color={c} w={11} />
+        <Ink d="M47 84 l8 3 M46 96 l9 3 M47 108 l8 3 M113 84 l-8 3 M114 96 l-9 3 M113 108 l-8 3" sw={1.3} op={0.6} />
+      </>;
+    case 'bob': return <Shape d="M45 62 q0 -36 35 -36 q35 0 35 36 l1 24 q-10 5 -20 1 l-1 -20 h-30 l-1 20 q-10 4 -20 -1z" fill={c} op={1} />;
+    default: return null;
+  }
+}
+
+/** Hair in front: the hairline and fringe for each style. */
+function HairFront({ look }: { look: HeroLook }) {
+  const c = HAIR_COLOR[look.hairColor];
+  switch (look.hair) {
+    case 'puffs': return <Shape d="M51 60 q-1 -29 29 -29 q30 0 29 29 q-6 -11 -15 -13 q-4 6 -12 5 q-9 -1 -12 -6 q-12 3 -19 14z" fill={c} op={1} sw={2} />;
+    case 'curls': return <Shape d="M50 60 q-2 -30 30 -30 q32 0 30 30 q-4 -9 -9 -10 q-3 6 -9 3 q-4 6 -10 2 q-5 5 -11 -1 q-6 4 -9 -2 q-8 2 -12 8z" fill={c} op={1} sw={2} />;
+    case 'braids': return <>
+      <Shape d="M51 60 q-1 -29 29 -29 q30 0 29 29 q-9 -14 -28 -15 q-1 2 -2 0 q-19 1 -28 15z" fill={c} op={1} sw={2} />
+      <Ink d="M80 32 v12" sw={1.5} op={0.7} />
+    </>;
+    case 'bob': return <Shape d="M49 56 q0 -27 31 -27 q31 0 31 27 q-31 -6 -62 0z" fill={c} op={1} sw={2} />;
+    case 'short': return <>
+      <Shape d="M51 58 q-1 -28 29 -28 q30 0 29 28 q-3 -7 -8 -9 q-6 4 -13 2 q-8 4 -16 0 q-7 2 -12 7z" fill={c} op={1} sw={2} />
+      <Ink d="M76 30 q4 -7 10 -3" sw={2} />
+    </>;
+  }
+}
+
+function Ribbons({ look }: { look: HeroLook }) {
+  const rib = look.coat === 'terracotta' ? P.ochre : P.terracotta;
+  if (look.hair === 'puffs') return <>
+    <Shape d="M58 41 l-12 -9 q-3 7 1 15z M58 41 l12 -8 q2 8 -2 15z" fill={rib} sw={1.9} />
+    <circle cx="58" cy="41" r="3" fill={rib} stroke={P.ink} strokeWidth="1.7" />
+    <Shape d="M102 41 l-12 -8 q-2 8 2 15z M102 41 l12 -9 q3 7 -1 15z" fill={rib} sw={1.9} />
+    <circle cx="102" cy="41" r="3" fill={rib} stroke={P.ink} strokeWidth="1.7" />
+  </>;
+  if (look.hair === 'braids') return <>
+    <circle cx="51" cy="119" r="4.2" fill={rib} stroke={P.ink} strokeWidth="1.6" />
+    <circle cx="109" cy="119" r="4.2" fill={rib} stroke={P.ink} strokeWidth="1.6" />
+  </>;
+  return null;
+}
+
+function Glasses() {
+  return <g fill="none" stroke={P.ink} strokeWidth="1.8">
+    <circle cx="80" cy="63" r="7.4" /><circle cx="97" cy="63" r="7.4" />
+    <path d="M87.4 63 h2.2 M104.4 62 l4 -1" strokeLinecap="round" />
+  </g>;
+}
+
+function Head({ expr, tilt = 0, look }: { expr: Expression; tilt?: number; look: HeroLook }) {
+  const skin = SKIN_COLOR[look.skin];
   return (
     <g transform={`rotate(${tilt} 80 92)`}>
-      {/* hair puffs (behind head) */}
-      <Shape d="M38 40 q-6 -14 6 -20 q4 -10 15 -5 q11 -2 12 10 q8 8 0 17 q-4 9 -14 7 q-8 6 -15 -1 q-9 -1 -4 -8z" fill={P.hair} op={1} />
-      <Shape d="M122 40 q6 -14 -6 -20 q-4 -10 -15 -5 q-11 -2 -12 10 q-8 8 0 17 q4 9 14 7 q8 6 15 -1 q9 -1 4 -8z" fill={P.hair} op={1} />
+      <HairBack look={look} />
       {/* ears */}
-      <Shape d="M51 64 q-8 -2 -7 6 q1 7 9 5" fill={P.mayaSkin} sw={2} />
-      <Shape d="M109 64 q8 -2 7 6 q-1 7 -9 5" fill={P.mayaSkin} sw={2} />
+      <Shape d="M51 64 q-8 -2 -7 6 q1 7 9 5" fill={skin} sw={2} />
+      <Shape d="M109 64 q8 -2 7 6 q-1 7 -9 5" fill={skin} sw={2} />
       {/* face */}
-      <Shape d="M51 62 q0 -30 29 -30 q29 0 29 30 q0 27 -29 27 q-29 0 -29 -27z" fill={P.mayaSkin} />
-      {/* hairline cap */}
-      <Shape d="M51 60 q-1 -29 29 -29 q30 0 29 29 q-6 -11 -15 -13 q-4 6 -12 5 q-9 -1 -12 -6 q-12 3 -19 14z" fill={P.hair} op={1} sw={2} />
-      {/* ribbons tie each puff */}
-      <Shape d="M58 41 l-12 -9 q-3 7 1 15z M58 41 l12 -8 q2 8 -2 15z" fill={P.terracotta} sw={1.9} />
-      <circle cx="58" cy="41" r="3" fill={P.terracotta} stroke={P.ink} strokeWidth="1.7" />
-      <Shape d="M102 41 l-12 -8 q-2 8 2 15z M102 41 l12 -9 q3 7 -1 15z" fill={P.terracotta} sw={1.9} />
-      <circle cx="102" cy="41" r="3" fill={P.terracotta} stroke={P.ink} strokeWidth="1.7" />
+      <Shape d="M51 62 q0 -30 29 -30 q29 0 29 30 q0 27 -29 27 q-29 0 -29 -27z" fill={skin} />
+      <HairFront look={look} />
+      <Ribbons look={look} />
       <Face expr={expr} />
+      {look.glasses && <Glasses />}
     </g>
   );
 }
 
-export function Maya({ pose = 'stand', expr = 'happy' }: { pose?: MayaPose; expr?: Expression }) {
+/** Just the head and shoulders, for choosing a hairstyle. */
+export function HeroHead({ look }: { look: HeroLook }) {
+  return (
+    <svg viewBox="28 6 104 104" width="100%" height="100%" overflow="visible" aria-hidden="true">
+      <g filter="url(#ink)">
+        <Shape d="M60 104 q20 -14 40 0z" fill={COAT_COLOR[look.coat]} />
+        <Head expr="happy" look={look} />
+      </g>
+    </svg>
+  );
+}
+
+export function Maya({ pose = 'stand', expr = 'happy', look = MAYA_LOOK }: { pose?: MayaPose; expr?: Expression; look?: HeroLook }) {
   const d = POSES[pose];
+  const skin = SKIN_COLOR[look.skin];
+  const coat = COAT_COLOR[look.coat];
   const dy = d.dy ?? 0;
   const satchel = d.satchel ?? 'hip';
   const [backArm, frontArm] = d.arms;
@@ -145,10 +221,10 @@ export function Maya({ pose = 'stand', expr = 'happy' }: { pose?: MayaPose; expr
           ))}
         </g>
         <g transform={`translate(0 ${dy}) ${d.lean ? `rotate(${d.lean} 80 160)` : ''}`}>
-          <Limb d={backArm} color={P.ochre} w={11} />
-          <circle cx={endOf(backArm)[0]} cy={endOf(backArm)[1]} r="5.6" fill={P.mayaSkin} stroke={P.ink} strokeWidth="2.1" />
+          <Limb d={backArm} color={coat} w={11} />
+          <circle cx={endOf(backArm)[0]} cy={endOf(backArm)[1]} r="5.6" fill={skin} stroke={P.ink} strokeWidth="2.1" />
           {/* coat */}
-          <Shape d="M66 95 q14 -7 28 0 l17 63 q-31 9 -62 0z" fill={P.ochre} />
+          <Shape d="M66 95 q14 -7 28 0 l17 63 q-31 9 -62 0z" fill={coat} />
           <Ink d="M80 101 L80 163" sw={1.8} op={0.85} />
           <Ink d="M56 150 q24 5 48 0" sw={1.2} op={0.35} />
           <circle cx="86" cy="118" r="2.2" fill={P.cream} stroke={P.ink} strokeWidth="1.4" />
@@ -158,10 +234,10 @@ export function Maya({ pose = 'stand', expr = 'happy' }: { pose?: MayaPose; expr
           {/* collar */}
           <Shape d="M66 96 q6 12 14 5 q8 7 14 -5 q-14 -6 -28 0z" fill={P.cream} sw={2} />
           {satchel === 'hip' && <Satchel where="hip" />}
-          <Head expr={expr} tilt={d.tilt} />
+          <Head expr={expr} tilt={d.tilt} look={look} />
           {satchel === 'head' && <Satchel where="head" />}
-          <Limb d={frontArm} color={P.ochre} w={11} />
-          <circle cx={endOf(frontArm)[0]} cy={endOf(frontArm)[1]} r="5.6" fill={P.mayaSkin} stroke={P.ink} strokeWidth="2.1" />
+          <Limb d={frontArm} color={coat} w={11} />
+          <circle cx={endOf(frontArm)[0]} cy={endOf(frontArm)[1]} r="5.6" fill={skin} stroke={P.ink} strokeWidth="2.1" />
         </g>
       </g>
     </svg>

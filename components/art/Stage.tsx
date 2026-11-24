@@ -2,6 +2,7 @@
 import { memo } from 'react';
 import type { Actor, Scene, Tap } from '@/lib/story/compose';
 import type { ObjectId } from '@/lib/story/content';
+import type { HeroLook } from '@/lib/story/hero';
 import { Backdrop } from './backdrops';
 import { Vignette } from './vignette';
 import { Maya, type Expression, type MayaPose } from './Maya';
@@ -10,11 +11,11 @@ import { Prop, Rain, Thing, Thought, Wind, type BubbleId, type PropId } from './
 
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
-function Figure({ a }: { a: Actor }) {
+function Figure({ a, hero }: { a: Actor; hero?: HeroLook }) {
   const expr = a.expr as CastExpr | undefined;
   const pose = a.pose as CastPose | undefined;
   switch (a.kind) {
-    case 'maya': return <Maya pose={a.pose as MayaPose} expr={a.expr as Expression} />;
+    case 'maya': return <Maya pose={a.pose as MayaPose} expr={a.expr as Expression} look={hero} />;
     case 'otis': return <Otis expr={expr} pose={pose} />;
     case 'juniper': return <Juniper expr={expr} pose={pose} />;
     case 'biscuit': return <Biscuit expr={expr} pose={pose} />;
@@ -31,7 +32,7 @@ function Figure({ a }: { a: Actor }) {
   }
 }
 
-const ActorLayer = memo(function ActorLayer({ a }: { a: Actor }) {
+const ActorLayer = memo(function ActorLayer({ a, hero }: { a: Actor; hero?: HeroLook }) {
   return (
     <div
       className={`actor actor-${a.kind}`}
@@ -40,7 +41,7 @@ const ActorLayer = memo(function ActorLayer({ a }: { a: Actor }) {
       style={{ left: pct(a.x, 1000), top: pct(a.y, 700), width: pct(a.w, 1000), height: pct(a.h, 700), zIndex: Math.round(a.z) }}
     >
       <div className={`actor-in${a.anim ? ` anim-${a.anim}` : ''}`}>
-        <div className={`fig${a.flip ? ' flip' : ''}`}><Figure a={a} /></div>
+        <div className={`fig${a.flip ? ' flip' : ''}`}><Figure a={a} hero={hero} /></div>
       </div>
     </div>
   );
@@ -78,7 +79,7 @@ export function Stage({ scene, onTap, labels = {}, still = false, className = ''
           ? <Vignette place={scene.place ?? 'park'} time={scene.time} />
           : <Backdrop id={scene.backdrop} time={scene.time} weather={scene.weather} sway={sway} />}
       </div>
-      {actors.map((a) => <ActorLayer key={a.key} a={a} />)}
+      {actors.map((a) => <ActorLayer key={a.key} a={a} hero={a.kind === 'maya' ? scene.hero : undefined} />)}
       {taps.map((a) => <HitArea key={`hit-${a.key}`} a={a} onTap={onTap!} label={labels[a.tap!.id] ?? a.tap!.label} />)}
     </div>
   );

@@ -131,3 +131,42 @@ test('pages grow as rounds complete, and undo steps back', () => {
   assert.equal(back.picks.title, undefined);
   assert.equal(back.finishedAt, undefined);
 });
+
+import { MAYA, PRONOUNS, type Hero } from '../lib/story/hero.ts';
+
+test('the little author is the hero: name, pronouns and look carry through every path', () => {
+  for (const pronoun of PRONOUNS) {
+    const hero: Hero = { name: 'Sam', pronoun, look: { skin: 'tan', hair: 'curls', hairColor: 'auburn', coat: 'blue', glasses: true } };
+    let n = 0;
+    for (const s0 of walk(newStory({ child: 'Sam', grownup: 'Dad' }, 1_700_000_000_000, hero))) {
+      n++;
+      const book = pages(s0).map((p) => p.text).join(' ');
+      assert.doesNotMatch(book, /\{|\}|Maya/, `${pronoun}: leftover token or Maya`);
+      assert.match(book, /Sam/);
+      assert.match(pages(s0)[0].text, /blue coat/);
+      if (pronoun === 'they') assert.doesNotMatch(book, /\bthey (was|has|is|does)\b/i);
+      const w = s0.picks;
+      // Juniper and Mrs. Penny are "she" in their own lines; everywhere else she/her must be the hero's pronoun.
+      if (pronoun !== 'she' && w.friend?.id !== 'juniper' && w.plan?.id !== 'ask') assert.doesNotMatch(book, /\b(she|her)\b/i, `${pronoun}: stray she/her`);
+      if (n % 97 === 0) {
+        assert.ok(titles(s0).every((t) => !/\{|Maya/.test(t)));
+        const shared = decodeBook(encodeBook(s0))!;
+        assert.deepEqual(shared.hero, hero);
+        assert.deepEqual(restore(JSON.parse(JSON.stringify(s0)))!.hero, hero);
+        assert.deepEqual(scene(s0).hero, hero.look);
+      }
+    }
+    assert.equal(n, 3 ** 9);
+  }
+  assert.match(prompt(newStory({ child: 'Sam', grownup: 'Dad' }, 0, { ...MAYA, name: 'Sam', pronoun: 'he' }), 'place').ask, /Where shall Sam go today\?/);
+});
+
+test('books saved before heroes existed still open, starring Maya; bad hero data falls back safely', () => {
+  const s = choose(fresh(), { id: 'park' });
+  const { hero: _drop, ...old } = s;
+  assert.deepEqual(restore(old)!.hero, MAYA);
+  const odd = restore({ ...s, hero: { name: '<b>Zo</b>', pronoun: 'xe', look: { skin: 'green', hair: 'mohawk' } } })!;
+  assert.equal(odd.hero.name, 'bZo/b');
+  assert.equal(odd.hero.pronoun, 'she');
+  assert.equal(odd.hero.look.hair, 'puffs');
+});

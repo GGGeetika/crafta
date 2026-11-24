@@ -68,7 +68,7 @@ export function Reader({ story, onClose, onAgain, onShare, shared = false, onKee
   if (leaf.kind === 'cover') body = <div className="r-cover"><Cover story={story} still={false} /></div>;
   if (leaf.kind === 'title') body = (
     <div className="r-title">
-      <div className="r-title-art"><Maya pose="wave" expr="delighted" /></div>
+      <div className="r-title-art"><Maya pose="wave" expr="delighted" look={story.hero.look} /></div>
       <h1>{bookTitle(story)}</h1>
       <p className="r-title-by">written by <strong>{child}</strong> and <strong>{grownup}</strong></p>
       <p className="r-title-small">A Maple Street story · {madeOn(story)}</p>
@@ -98,7 +98,7 @@ export function Reader({ story, onClose, onAgain, onShare, shared = false, onKee
       <p className="r-authors-kicker">This book was made by</p>
       <p className="r-authors-names">{child}<span>&amp;</span>{grownup}</p>
       <p className="r-authors-date">on {madeOn(story)}</p>
-      <p className="r-authors-note">{w.object ? `Starring Maya, ${THINGS[w.object].the}, and two very fine authors.` : ''}</p>
+      <p className="r-authors-note">{w.object ? `Starring ${story.hero.name}, ${THINGS[w.object].the}, and two very fine authors.` : ''}</p>
       <div className="r-authors-actions">
         <button type="button" className="btn btn-primary" onClick={onAgain}>{shared ? 'Make your own book' : 'Make another adventure'}</button>
         {shared && onKeep && <button type="button" className="btn" onClick={onKeep}>Keep this book on our shelf</button>}
