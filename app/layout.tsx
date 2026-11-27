@@ -8,8 +8,11 @@ const book = Libre_Caslon_Text({ subsets: ['latin'], weight: ['400', '700'], sty
 const ui = Nunito_Sans({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://craftabooks.com'),
   title: 'Crafta — Little books. Big memories.',
   description: 'A classic children’s book that you make together.',
+  openGraph: { siteName: 'Crafta', type: 'website', title: 'Crafta — Little books. Big memories.', description: 'A classic children’s book that you make together.' },
+  twitter: { card: 'summary_large_image', title: 'Crafta — Little books. Big memories.', description: 'A classic children’s book that you make together.' },
   appleWebApp: { capable: true, title: 'Crafta', statusBarStyle: 'default' },
 };
 

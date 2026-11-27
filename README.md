@@ -75,9 +75,19 @@ components/studio/     Home, Authors, Make (canvas + turn panel + book strip), C
 
 **Privacy.** Everything stays in this browser’s local storage. A private link carries the whole book inside the URL *fragment* (`#book=…`), which browsers never send to a server, so there is nothing stored on our side. Analytics record event names with a random anonymous device id. No children’s names, story content, photos or birthdates are ever collected.
 
-## Deploy
+## Deploy: craftabooks.com
 
-Same as V1: any Node host that runs Next.js (for example Vercel), build with `npm run build`, serve with `npm start`. No environment variables. The build uses `next build --webpack` because this cloud sandbox restricts Turbopack worker ports. Deploy this branch as a preview so the live V1 on `main` is untouched.
+Crafta is a web app hosted on Vercel at **https://craftabooks.com**. `main` is the live app; every merge to `main` deploys it. Work in progress goes on branches, and Vercel builds a private preview link for each one (behind your Vercel login) to check before merging. V1 is preserved at the git tag `v1`.
+
+One-time setup:
+
+1. **Import the repo.** At https://vercel.com/new, sign in with the GitHub account that owns `GGGeetika/crafta` and import `crafta` (if it's missing, use **Adjust GitHub App Permissions**). Leave the detected settings: Framework Next.js, build command `npm run build`, no environment variables. Production branch: `main`. Deploy.
+2. **Add the domain.** In the project, go to **Settings → Domains** and add `craftabooks.com`, plus `www.craftabooks.com` set to redirect to it.
+3. **Point DNS at Vercel.** Vercel shows the exact records to create. Enter them at your domain registrar; they usually take effect within an hour, and Vercel issues the HTTPS certificate automatically.
+
+The site's link preview (`app/opengraph-image.png`) is rendered from the real Maple Street artwork. Shared book links carry the book after the `#`, which link previewers never see, so they always show this generic card and never a child's name or story.
+
+The build uses `next build --webpack` because the cloud sandbox this was developed in restricts Turbopack worker ports. It works the same on Vercel.
 
 ## Known limitations
 
