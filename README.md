@@ -77,11 +77,11 @@ components/studio/     Home, Authors, Make (canvas + turn panel + book strip), C
 
 ## Deploy: craftabooks.com
 
-Crafta is a web app hosted on Vercel at **https://craftabooks.com**. `main` is the live app; every merge to `main` deploys it. Work in progress goes on branches, and Vercel builds a private preview link for each one (behind your Vercel login) to check before merging. V1 is preserved at the git tag `v1`.
+Crafta is a web app hosted on Vercel at **https://craftabooks.com**. `main` is the live app; every merge to `main` deploys it. Work in progress goes on branches, and Vercel builds a private preview link for each one (behind your Vercel login) to check before merging. V1 stays in `main`'s history at commit `d92ae8d` (optionally tag it `v1` on GitHub under Releases).
 
 One-time setup:
 
-1. **Import the repo.** At https://vercel.com/new, sign in with the GitHub account that owns `GGGeetika/crafta` and import `crafta` (if it's missing, use **Adjust GitHub App Permissions**). Leave the detected settings: Framework Next.js, build command `npm run build`, no environment variables. Production branch: `main`. Deploy.
+1. **Vercel project.** The repo is already connected to the Vercel project `crafta` (production branch `main`, detected Next.js settings, no environment variables). To set it up from scratch: import `GGGeetika/crafta` at https://vercel.com/new with those settings.
 2. **Add the domain.** In the project, go to **Settings → Domains** and add `craftabooks.com`, plus `www.craftabooks.com` set to redirect to it.
 3. **Point DNS at Vercel.** Vercel shows the exact records to create. Enter them at your domain registrar; they usually take effect within an hour, and Vercel issues the HTTPS certificate automatically.
 
