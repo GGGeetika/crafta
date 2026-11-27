@@ -1,59 +1,99 @@
-# Crafta — Story Studio
+# Crafta — The Story Studio (V2)
 
-Make stories starring you. Your people. Your places. Your imagination.
+**A classic children’s book that you make together.** Little books. Big memories.
 
-A mobile-first, single-device storytelling prototype for families: **An Adventure in My Neighborhood**. Meet Maya, choose the bakery, park, or train station, make four consequential decisions, then turn through an eight-page storybook. Original layered SVG scenes respond to the adventure. No accounts, database, remote AI, or paid services.
+A child and a grown-up sit side by side with one device and make a six-page picture book, taking turns. **The child is the hero**: before page one, they draw themself into the book. The illustrated world is the interface: you tap the bakery and your hero walks there; pick “a big gust of wind” and the trees bend and the kite flies off. After every round a new page drops into the growing book. At the end the cover is revealed, then the app gets out of the way so you can read your book together.
 
-## Develop
+No accounts, no server-side storage, no AI image generation. Works offline once loaded.
 
-Use Node.js 24 and npm. The tests use Node’s built-in TypeScript stripping.
+## Run it
+
+Node 22.6+ (or 24) and npm.
 
 ```sh
 npm install
-npm run dev
-```
-
-Open the development server on port 3000. The layout is designed for 375px phones and expands to a split scene and interaction view on desktop.
-
-```sh
-npm test
+npm run dev          # http://localhost:3000
+npm test             # story engine: all 19,683 paths + branching, custom text, restore, sharing
 npm run typecheck
-npm run build
-npm start
+npm run build && npm start
 ```
 
-`npm start` serves the production build. Build before typechecking a fresh checkout to include generated route types, if desired.
+`/model-sheet` is an internal studio page: Maya’s poses and expressions, the cast, objects and the four backdrops on one sheet. Use it to review the art or brief an illustrator.
 
-## Implementation
+## The experience
 
-- Next.js App Router, React, strict TypeScript, Tailwind CSS 4, and Lucide icons.
-- `lib/stories.ts`: structured character/location/event/decision/outcome state, branching options, deterministic eight-page story generation, and validated local restoration.
-- `components/Scene.tsx`: original SVG neighborhood, Maya, location and event layers, helper, clues, resolution, and celebration details.
-- `app/page.tsx`: welcome, character introduction, immediate scene selection, four decisions, custom ideas, and page reader.
-- Progress is stored only in this browser’s local storage. Continue from the welcome screen after reloading. Starting another story clears the previous adventure. Storage failures are reported without blocking play.
-- Custom ideas are included as plain text in the story. They do not generate custom illustrations; the scene still advances through the current chapter.
-- Motion honors reduced-motion preferences. Choices are keyboard accessible with visible focus; changed headings receive focus and scene descriptions are available as text.
+| | |
+|---|---|
+| **Home / bookshelf** | Maple Street, the tagline, *Make a book together* (or *Continue our book*), and finished books shown as covers on a shelf. |
+| **Authors** | A title page: “written by ___ and ___”. First names or nicknames only. |
+| **Who’s the hero?** | The little author builds their hero from drawn parts: 5 hairstyles, 4 hair colours, 5 skin tones, 4 coats, glasses. A grown-up picks she, he or they. The hero takes the child’s name everywhere: the story, the titles, the cover. *Use Maya instead* is the fallback, and the next book starts from the hero the child made last time. No photos. |
+| **Six rounds** | Each round is a turn for the little author (crayon), the grown-up (pen), or both together, shown with an icon, a coloured band and the author’s name, so colour is never the only cue. |
+| **Growing book** | After each round the new page flies into the “Our book” strip, and the page text appears in book type for the grown-up to read aloud. Tap any finished page to revisit it. |
+| **Cover reveal** | A cloth-bound cover with the title, both names, and an illustration built from the story’s own characters and object. Primary action: *Let’s read together.* |
+| **Reader** | Full screen, no app chrome. Spreads in landscape, single pages in portrait. Swipe, tap or use the arrow keys. Three text sizes. Ends with *The End*, an authorship page, and *Make another adventure*. |
+| **Save & share** | Behind a press-and-hold grown-up gate: a private reading link, the whole book as one self-contained HTML file, and the cover as a PNG. Uses the native share sheet where the device supports it. |
 
-## Validation
+### The six rounds
 
-The automated tests traverse every built-in branch in each location, verify coherent complete story generation, custom ideas, invalid saves, progress restoration, and branch-dependent options. Manually verify at 375px: welcome → Maya → each location → four choices (including a custom idea) → all eight pages → another story. Reload midway to check resuming. Check keyboard navigation and reduced-motion settings.
+1. **Where shall we go?** (The hero is called Maya below; in a real book it’s the child.) Child taps Little Crumb, the park or the station in the picture.
+2. **A little discovery.** Child taps one of three objects at that place. Grown-up decides what makes it special: a note / very old / does something surprising / *write your own*.
+3. **Something unexpected.** Grown-up picks the twist: wind / a cheeky animal / rain. Child picks Maya’s reaction, which sets her trait (quick / cheerful / clever). The last page comes back to that trait.
+4. **A new friend.** Child taps Grandpa Otis, Juniper or Biscuit the dog. Grown-up says what they need: lost / lonely / *the object is theirs* / *write your own*.
+5. **What shall we do?** Together. There are three solutions for each need, and they depend on the object and the place.
+6. **Until next time.** Together. Pick an ending and a title (three suggestions built from the story, or your own).
 
-## Deploy
+Every choice changes the text and the picture. The test suite checks that no two options at any step lead to the same book.
 
-Deploy to any Node-compatible Next.js host (for example Vercel): install with `npm install`, build with `npm run build`, and serve with `npm start`. No environment variables are required. For a container or Node host, expose port 3000 and set `PORT` as needed. Keep HTTPS enabled in production. No progress is sent to the server.
+## Architecture
 
-## Scope
+```
+lib/story/hero.ts      Hero model (name, she/he/they, look) and heroize(): fills name/pronoun/coat tokens in all text
+lib/story/content.ts   Story bible: places, objects, twists, cast, needs, plans, endings, all prose fragments
+lib/story/engine.ts    Story state, step order + whose turn, options, validation, prose assembly, titles,
+                       restore() (replays saved choices through the rules), share-link encode/decode
+lib/story/compose.ts   Pure scene composition: story state → positioned, layered actors on a 1000×700 stage.
+                       Feeds the live canvas, every book page and the cover, so they always match.
+lib/persist.ts         localStorage: autosaved draft + bookshelf (always validated through restore())
+lib/analytics.ts       Anonymous event names only → /api/events (server log). No names, choices or text.
 
-V0 implements one reusable neighborhood adventure. Photo upload, AI character generation, printing, accounts, social sharing, voice, complex editing, and a saved-story library are intentionally outside this prototype.
+components/art/        The illustration system (hand-authored SVG)
+  defs.tsx               shared pen-wobble + paper-tooth filters; Shape/Limb/Ink primitives
+  palette.ts             the one limited palette
+  Maya.tsx               the hero template (Maya is the default look): 14 poses × 8 expressions,
+                         parametrised by skin, hairstyle, hair colour, coat and glasses
+  cast.tsx               Otis, Juniper, Biscuit, Mrs. Penny, cat, squirrel, pigeon
+  objects.tsx            9 discovery objects (+ note/old/curious looks), thought bubbles, rain, wind, props
+  scenery.tsx            trees, lamp, bench, houses, Little Crumb, train, pond…
+  backdrops.tsx          Maple Street, bakery, park, station (day/dusk, clear/wind/rain)
+  Stage.tsx              layered renderer: static backdrop + one SVG layer per actor + forgiving hit areas
+components/studio/     Home, Authors, Make (canvas + turn panel + book strip), Cover, Reader, ShareSheet, exporter
+```
 
-### Open on your phone with Vercel
+**Art approach.** Every asset is hand-authored SVG in the same world units. One shared filter turns the geometry into a steady pen line with a little paper tooth. Washes sit slightly off-register, the way they do in printed books. A larger, looser filter blooms the edges of skies and hills. Characters are reusable components with poses and expressions, so the hero looks the same on every page. Scenes are layered (backdrop → actors → weather), and actors move by animating their layer, so the heavy backdrop never repaints.
 
-1. Visit https://vercel.com/new and sign in using the GitHub account that can access `GGGeetika/crafta`.
-2. Import `GGGeetika/crafta`. If it is missing, use **Adjust GitHub App Permissions** to grant Vercel access to this repository.
-3. Select the `main` branch. Leave the root directory at the repository root and the framework preset as **Next.js**.
-4. In project settings, select **Node.js 24.x**. Use install command `npm ci`, build command `npm run build`, and the default Next.js output directory. No environment variables are needed.
-5. Click **Deploy**. When deployment finishes, open the deployment URL shown by Vercel on your phone.
-6. If Vercel asks you to sign in on your phone, sign in with your project account. To let someone else test, configure Deployment Protection in Vercel's project settings or use the production deployment according to your access preferences.
-7. Tap **Let’s make a story!**, meet Maya, choose a location, make four decisions, and flip through the eight-page book. Refresh midway and choose **Continue our adventure** to test local progress.
+**Reliability.** Stories are deterministic templates filled with the authors’ choices, so there is no network dependency and no waiting. A typed custom answer is cleaned (markup stripped, length capped) and woven into sentence frames that work with any wording. Progress autosaves after every choice. Reload and you’ll see *Continue our book*.
 
-The build uses Next.js’s supported Webpack bundler (`next build --webpack`) because this cloud runtime restricts the ports used by Turbopack build workers. The development server still uses Next.js’s default development bundler and listens on port 3000.
+**Privacy.** Everything stays in this browser’s local storage. A private link carries the whole book inside the URL *fragment* (`#book=…`), which browsers never send to a server, so there is nothing stored on our side. Analytics record event names with a random anonymous device id. No children’s names, story content, photos or birthdates are ever collected.
+
+## Deploy: craftabooks.com
+
+Crafta is a web app hosted on Vercel at **https://craftabooks.com**. `main` is the live app; every merge to `main` deploys it. Work in progress goes on branches, and Vercel builds a private preview link for each one (behind your Vercel login) to check before merging. V1 stays in `main`'s history at commit `d92ae8d` (optionally tag it `v1` on GitHub under Releases).
+
+One-time setup:
+
+1. **Vercel project.** The repo is already connected to the Vercel project `crafta` (production branch `main`, detected Next.js settings, no environment variables). To set it up from scratch: import `GGGeetika/crafta` at https://vercel.com/new with those settings.
+2. **Add the domain.** In the project, go to **Settings → Domains** and add `craftabooks.com`, plus `www.craftabooks.com` set to redirect to it.
+3. **Point DNS at Vercel.** Vercel shows the exact records to create. Enter them at your domain registrar; they usually take effect within an hour, and Vercel issues the HTTPS certificate automatically.
+
+The site's link preview (`app/opengraph-image.png`) is rendered from the real Maple Street artwork. Shared book links carry the book after the `#`, which link previewers never see, so they always show this generic card and never a child's name or story.
+
+The build uses `next build --webpack` because the cloud sandbox this was developed in restricts Turbopack worker ports. It works the same on Vercel.
+
+## Known limitations
+
+- The art is hand-coded vector illustration in a classic picture-book idiom. It is consistent and original, but it is not a professional illustrator’s brushwork. The component boundaries (characters, poses, objects, backdrops) are designed so an illustrator’s artwork can replace them one piece at a time.
+- One world (Maple Street) and three friends. The hero is built from a fixed set of drawn parts; there’s no free-form customization, and that’s intentional. Seated poses exist for the hero only.
+- Story text uses the hero’s pronouns (she/he/they). Juniper and Mrs. Penny keep their own.
+- Custom answers change the text but not the pictures; the picture falls back to the closest built-in choice.
+- No voice input. Typed custom answers only.
+- The shared link holds the whole book (around 300–400 characters), so it is long but works without a server.
