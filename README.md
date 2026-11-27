@@ -75,17 +75,15 @@ components/studio/     Home, Authors, Make (canvas + turn panel + book strip), C
 
 **Privacy.** Everything stays in this browser’s local storage. A private link carries the whole book inside the URL *fragment* (`#book=…`), which browsers never send to a server, so there is nothing stored on our side. Analytics record event names with a random anonymous device id. No children’s names, story content, photos or birthdates are ever collected.
 
-## Deploy: craftabooks.com
+## Deploy: publish.craftabooks.com
 
-Crafta is a web app hosted on Vercel at **https://craftabooks.com**. `main` is the live app; every merge to `main` deploys it. Work in progress goes on branches, and Vercel builds a private preview link for each one (behind your Vercel login) to check before merging. V1 stays in `main`'s history at commit `d92ae8d` (optionally tag it `v1` on GitHub under Releases).
-
-One-time setup:
+Crafta is a web app hosted on Vercel at **https://publish.craftabooks.com**. `craftabooks.com` itself (and `www`) stays with the Shopify store. `main` is the live app; every merge to `main` deploys it. Work in progress goes on branches, and Vercel builds a private preview link for each one (behind your Vercel login) to check before merging. V1 stays in `main`'s history at commit `d92ae8d` (optionally tag it `v1` on GitHub under Releases).
 
 1. **Vercel project.** The repo is already connected to the Vercel project `crafta` (production branch `main`, detected Next.js settings, no environment variables). To set it up from scratch: import `GGGeetika/crafta` at https://vercel.com/new with those settings.
-2. **Add the domain.** In the project, go to **Settings → Domains** and add `craftabooks.com`, plus `www.craftabooks.com` set to redirect to it.
-3. **Point DNS at Vercel.** Vercel shows the exact records to create. Enter them at your domain registrar; they usually take effect within an hour, and Vercel issues the HTTPS certificate automatically.
+2. **Add the domain in Vercel.** In the project's **Domains** page, add `publish.craftabooks.com`. Vercel shows the CNAME record it needs.
+3. **Add the DNS record in Shopify** (craftabooks.com's DNS is managed there). Go to Settings → Domains → craftabooks.com → Domain settings → Edit DNS settings → Add custom record: type **CNAME**, name **`publish`**, value as shown by Vercel. Leave all existing records alone; the shop keeps working.
 
-The site's link preview (`app/opengraph-image.png`) is rendered from the real Maple Street artwork. Shared book links carry the book after the `#`, which link previewers never see, so they always show this generic card and never a child's name or story.
+The site's link preview (`app/opengraph-image.png`, served via `metadataBase` in `app/layout.tsx`) is rendered from the real Maple Street artwork. If the app moves to another address, update `metadataBase` and the address on the card. Shared book links carry the book after the `#`, which link previewers never see, so they always show this generic card and never a child's name or story.
 
 The build uses `next build --webpack` because the cloud sandbox this was developed in restricts Turbopack worker ports. It works the same on Vercel.
 
